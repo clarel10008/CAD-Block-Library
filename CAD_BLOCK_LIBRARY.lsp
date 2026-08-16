@@ -1,6 +1,6 @@
 ;; CAD BLOCK LIBRARY MANAGEMENT SYSTEM
 ;; AutoLISP - SHOW BASE NAMES ONLY, WITH VARIANT PREVIEWS
-;; Version: v1.4 | Lines: 525 | Size: 19 KB | Date: 2026-08-16 | Time: 15:33:22 MUT
+;; Version: v1.5 | Lines: 528 | Size: 19 KB | Date: 2026-08-16 | Time: 16:15:45 MUT
 
 ;; Global Variables
 (setq *lib_path* "D:\\CAD SETUP\\CATALOG\\CADBLOCKLIBRARY\\")
@@ -17,7 +17,7 @@
 (setq *drawings_full_paths* '())
 (setq *explode_flag* nil)
 (setq *preview_image_path* nil)
-(setq *preview_labels* '("LEFT" "FRONT" "RIGHT" "PLAN" "SECTION" "3D"))
+(setq *preview_labels* '("BASE" "LEFT" "FRONT" "RIGHT" "PLAN" "SECTION" "3D"))
 (setq *variant_suffixes* '("-LEFT" "-FRONT" "-RIGHT" "-PLAN" "-SECTION" "-3D"))
 (setq *insertion_count* 0)
 (setq *last_scale* 1.0)
@@ -262,9 +262,9 @@
     )
 )
 
-;; ===== ON BLOCK SELECTED - LOAD VARIANTS =====
+;; ===== ON BLOCK SELECTED - LOAD VARIANTS - DIALOG STAYS OPEN =====
 (defun on_drawing_list ()
-    "Handle base block selection - Load all variants"
+    "Handle base block selection - Load all variants - DIALOG STAYS OPEN"
     (setq idx (atoi (get_tile "folder_list")))
     (if (and (>= idx 0) (< idx (length *drawings_list*)))
         (progn
@@ -337,9 +337,9 @@
     (itoa count)
 )
 
-;; ===== ON PREVIEW BUTTON CLICKED =====
+;; ===== ON PREVIEW BUTTON CLICKED - DIALOG STAYS OPEN =====
 (defun on_preview (idx)
-    "Handle preview button click - show variant preview"
+    "Handle preview button click - show variant preview - DIALOG STAYS OPEN"
     (setq *preview_idx* idx)
     (if (and *preview_variants* (>= idx 0) (< idx (length *preview_variants*)))
         (progn
@@ -408,7 +408,7 @@
 
 ;; ===== INSERT BLOCK =====
 (defun on_insert ()
-    "Insert selected block variant"
+    "Insert selected block variant - CLOSES DIALOG ON INSERT"
     (if (and *drawing* *preview_variants* (>= *preview_idx* 0) (< *preview_idx* (length *preview_variants*)))
         (progn
             (setq fpath (nth *preview_idx* *preview_variants*))
@@ -439,7 +439,13 @@
                     (setq *last_rotation* rotation)
                     (setq *last_layer* layer)
                     
-                    ;; Close dialog
+                    ;; Get variant name
+                    (if (< *preview_idx* (length *preview_labels*))
+                        (setq variant_label (nth *preview_idx* *preview_labels*))
+                        (setq variant_label "BASE")
+                    )
+                    
+                    ;; Close dialog BEFORE inserting
                     (done_dialog)
                     
                     ;; Get insertion point
@@ -461,12 +467,6 @@
                             
                             ;; Increment counter
                             (setq *insertion_count* (+ *insertion_count* 1))
-                            
-                            ;; Get variant name
-                            (if (< *preview_idx* (length *preview_labels*))
-                                (setq variant_label (nth *preview_idx* *preview_labels*))
-                                (setq variant_label "BASE")
-                            )
                             
                             ;; Confirmation
                             (alert (strcat "Block '" *drawing* "' (" variant_label ") inserted!\n\nTotal: " (itoa *insertion_count*)))
@@ -491,8 +491,8 @@
 )
 
 (princ "\n========================================")
-(princ "\n>>> CAD BLOCK LIBRARY MANAGEMENT v1.4")
+(princ "\n>>> CAD BLOCK LIBRARY MANAGEMENT v1.5")
 (princ "\n>>> Type CADLIB to start")
-(princ "\n>>> FIXED: No duplicate base names")
+(princ "\n>>> FIXED: Dialog stays open on block select")
 (princ "\n========================================\n")
 (princ)
