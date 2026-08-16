@@ -1,7 +1,6 @@
-;; Version: v1.10 | Lines: 575 | Size: 22 KB | Date: 2026-08-16 | Time: 18:45:30
 ;; CAD BLOCK LIBRARY MANAGEMENT SYSTEM
 ;; AutoLISP - SHOW BASE NAMES ONLY, WITH VARIANT PREVIEWS
-;; Location: Mauritius (UTC+4 MUT)
+;; Version: v1.10 | Lines: 575 | Size: 22 KB | Date: 2026-08-16 | Time: 18:45:30
 
 ;; ===== GLOBAL VARIABLES =====
 (setq *lib_path* "D:\\CAD SETUP\\CATALOG\\CADBLOCKLIBRARY")
