@@ -1,10 +1,9 @@
-//  Version: v1.9 | Lines: 590 | Size: 23 KB | Date: 2026-08-16 | Time: 18:15:45
 //  CAD BLOCK LIBRARY MANAGEMENT SYSTEM - DCL FILE
 //  AutoLISP Dialog Definition Language (DCL)
-//  Location: Mauritius (UTC+4 MUT)
+//  Version: v1.10 | Lines: 240 | Size: 8 KB | Date: 2026-08-16 | Time: 18:45:30
 
 cad_block_library : dialog {
-    label = "CAD BLOCK LIBRARY MANAGEMENT v1.9 - Mauritius";
+    label = "CAD BLOCK LIBRARY MANAGEMENT v1.10 - Mauritius";
     
     initial_focus = "main_list";
     
@@ -315,41 +314,3 @@ cad_block_library : dialog {
         }
     }
 }
-
-// ===== DCL DIALOG DIMENSIONS SUMMARY v1.9 =====
-// Dialog Box Total Size: 76 units wide x 48 units tall
-// Version: v1.9 | Date: 2026-08-16 | Time: 18:15:45
-//
-// Layout Grid:
-// - Row 1: Lists (25+25+25 = 75 units wide) x 12 tall
-// - Row 2: Separator (1 unit)
-// - Row 3: Label (76 units)
-// - Row 4: Preview Buttons (5 buttons x 12 units each) x 2 tall
-// - Row 5: Last Preview Buttons (2 buttons + spacer) x 2 tall
-// - Row 6: Separator (1 unit)
-// - Row 7: Main Preview (40) + Block Properties (34) = 74 units x 14 tall
-// - Row 8: Separator (1 unit)
-// - Row 9: Action Buttons (EXPLODE + INSERT) x 2 tall
-// - Row 10: Status Bar (76 units)
-// - Row 11: Separator (1 unit)
-// - Row 12: Bottom Buttons (CANCEL) x 2 tall
-//
-// List Box Dimensions:
-// - Main Folder List: 24 wide x 11 tall
-// - Sub Folder List: 24 wide x 11 tall
-// - Blocks Folder List: 24 wide x 11 tall
-//
-// Preview Box Dimensions:
-// - Main Preview Image: 39 wide x 13 tall
-// - Block Info Text: 33 wide x 7 tall
-//
-// Controls Dimensions:
-// - Layer Field: 20 units wide x 1 tall
-// - Rotation Field: 20 units wide x 1 tall
-// - Scale Field: 20 units wide x 1 tall
-//
-// Button Dimensions:
-// - Preview Buttons: 12 wide x 2 tall (7 buttons total)
-// - Insert Button: 12 wide x 2 tall
-// - Explode Toggle: 12 wide x 2 tall
-// - Cancel Button: 12 wide x 2 tall
