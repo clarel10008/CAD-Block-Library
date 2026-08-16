@@ -4,180 +4,82 @@
 
 cad_block_library : dialog {
     label = "CAD BLOCK LIBRARY MANAGEMENT v1.10 - Mauritius";
-    initial_focus = "main_list";
-    width = 76;
-
-    : row {
-        : column {
-            label = "MAIN FOLDER LIBRARY";
-            width = 25;
-            : list_box {
-                key = "main_list";
-                width = 24;
-                height = 11;
-                multiple_select = false;
+    
+    : boxed_column {
+        label = "Select Libraries";
+        : row {
+            : column {
+                label = "Main Folder";
+                : list_box {
+                    key = "main_list";
+                    width = 20;
+                    height = 10;
+                }
             }
-        }
-        
-        : column {
-            label = "SUB FOLDER LIBRARY";
-            width = 25;
-            : list_box {
-                key = "sub_list";
-                width = 24;
-                height = 11;
-                multiple_select = false;
+            : column {
+                label = "Sub Folder";
+                : list_box {
+                    key = "sub_list";
+                    width = 20;
+                    height = 10;
+                }
             }
-        }
-        
-        : column {
-            label = "BLOCKS FOLDER LIBRARY";
-            width = 25;
-            : list_box {
-                key = "folder_list";
-                width = 24;
-                height = 11;
-                multiple_select = false;
+            : column {
+                label = "Blocks";
+                : list_box {
+                    key = "folder_list";
+                    width = 20;
+                    height = 10;
+                }
             }
         }
     }
     
-    : row {
-        : text {
-            label = "DRAWING BLOCKS - SELECT VIEW";
-        }
-    }
-    
-    : row {
-        : button {
-            key = "preview_0";
-            label = "BASE";
-            width = 12;
-        }
-        : button {
-            key = "preview_1";
-            label = "LEFT";
-            width = 12;
-        }
-        : button {
-            key = "preview_2";
-            label = "FRONT";
-            width = 12;
-        }
-        : button {
-            key = "preview_3";
-            label = "RIGHT";
-            width = 12;
-        }
-        : button {
-            key = "preview_4";
-            label = "PLAN";
-            width = 12;
-        }
-    }
-    
-    : row {
-        : button {
-            key = "preview_5";
-            label = "SECTION";
-            width = 12;
-        }
-        : button {
-            key = "preview_6";
-            label = "3D";
-            width = 12;
-        }
-        : column {
-            width = 40;
-        }
+    : boxed_row {
+        label = "Preview Variants";
+        : button { key = "preview_0"; label = "BASE"; width = 10; }
+        : button { key = "preview_1"; label = "LEFT"; width = 10; }
+        : button { key = "preview_2"; label = "FRONT"; width = 10; }
+        : button { key = "preview_3"; label = "RIGHT"; width = 10; }
+        : button { key = "preview_4"; label = "PLAN"; width = 10; }
+        : button { key = "preview_5"; label = "SECTION"; width = 10; }
+        : button { key = "preview_6"; label = "3D"; width = 10; }
     }
     
     : row {
         : column {
-            label = "BLOCK PREVIEW BEFORE INSERT";
-            width = 40;
+            label = "Preview";
             : image {
                 key = "main_preview";
-                width = 39;
-                height = 13;
+                width = 30;
+                height = 12;
             }
         }
-        
         : column {
-            label = "BLOCK PROPERTIES CONTROLS";
-            width = 34;
+            label = "Block Info";
             : text_multiline {
                 key = "block_info";
-                width = 33;
-                height = 7;
+                width = 30;
+                height = 6;
                 read_only = true;
             }
-            : row {
-                : text {
-                    label = "LAYER";
-                    width = 10;
-                }
-                : edit_box {
-                    key = "block_layer";
-                    width = 20;
-                }
-            }
-            : row {
-                : text {
-                    label = "ROTATION";
-                    width = 10;
-                }
-                : edit_box {
-                    key = "block_rotation";
-                    width = 20;
-                }
-            }
-            : row {
-                : text {
-                    label = "SCALE";
-                    width = 10;
-                }
-                : edit_box {
-                    key = "block_scale";
-                    width = 20;
-                }
-            }
+            : text { label = "Layer:"; }
+            : edit_box { key = "block_layer"; width = 30; }
+            : text { label = "Rotation:"; }
+            : edit_box { key = "block_rotation"; width = 30; }
+            : text { label = "Scale:"; }
+            : edit_box { key = "block_scale"; width = 30; }
         }
     }
     
     : row {
-        : toggle {
-            key = "explode_check";
-            label = "EXPLODE";
-            width = 12;
-        }
-        : column {
-            width = 40;
-        }
-        : button {
-            key = "insert_block";
-            label = "INSERT";
-            width = 12;
-            is_default = true;
-        }
+        : toggle { key = "explode_check"; label = "Explode After Insert"; width = 20; }
+        : button { key = "insert_block"; label = "INSERT BLOCK"; width = 15; is_default = true; }
     }
     
-    : row {
-        : text {
-            key = "status_bar";
-            label = "Ready: Select a main folder to begin";
-        }
-    }
+    : text { key = "status_bar"; label = "Ready..."; }
     
     : row {
-        : column {
-            width = 40;
-        }
-        : button {
-            key = "accept";
-            label = "CANCEL";
-            width = 12;
-            is_cancel = true;
-        }
+        : button { key = "accept"; label = "CLOSE"; width = 15; is_cancel = true; }
     }
 }
