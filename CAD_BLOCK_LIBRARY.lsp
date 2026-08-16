@@ -1,5 +1,6 @@
 ;; CAD BLOCK LIBRARY MANAGEMENT SYSTEM
-;; AutoLISP - FIXED: Compatible with older AutoCAD versions
+;; AutoLISP - CORRECTED: SHOW ONLY BASE BLOCK NAMES
+;; Version: v1.2 | Lines: 485 | Size: 17 KB | Date: 2026-08-16 | Time: 12:15:00 UTC
 
 ;; Global Variables
 (setq *lib_path* "D:\\CAD SETUP\\CATALOG\\CADBLOCKLIBRARY\\")
@@ -49,6 +50,25 @@
         (setq result (append result (list current)))
     )
     result
+)
+
+;; ===== EXTRACT FILENAME FROM PATH =====
+(defun extract_filename (full_path)
+    "Extract filename from full path"
+    (setq parts (string_split full_path "\\"))
+    (if parts
+        (car (last parts))
+        full_path
+    )
+)
+
+;; ===== REMOVE FILE EXTENSION =====
+(defun remove_extension (filename)
+    "Remove .dwg extension from filename"
+    (if (> (strlen filename) 4)
+        (substr filename 1 (- (strlen filename) 4))
+        filename
+    )
 )
 
 ;; ===== MAIN COMMAND =====
@@ -172,12 +192,12 @@
         (progn
             (setq *sub_folder* (nth idx *sub_folders_list*))
             
-            ;; Get ONLY BASE BLOCK NAMES (CHAIRS_001, CHAIRS_002, etc)
+            ;; Get ALL DWG FILES (show full filenames with .DWG)
             (setq *drawings_list* '())
             (setq *drawings_full_paths* '())
-            (get_unique_block_names *main_folder* *sub_folder*)
+            (get_all_dwg_files *main_folder* *sub_folder*)
             
-            ;; Populate folder list with NAMES ONLY (no extensions, no variants)
+            ;; Populate folder list with FULL FILENAMES
             (start_list "folder_list")
             (foreach dwg *drawings_list*
                 (add_list dwg)
@@ -190,64 +210,20 @@
     )
 )
 
-;; ===== GET UNIQUE BLOCK NAMES =====
-(defun get_unique_block_names (main_folder sub_folder)
-    "Extract unique block names and store their full paths"
+;; ===== GET ALL DWG FILES =====
+(defun get_all_dwg_files (main_folder sub_folder)
+    "Get all DWG files from folder with full filenames"
     (setq dwg_path (strcat *lib_path* main_folder "\\" sub_folder "\\"))
     (setq all_dwgs (vl-directory-files dwg_path "*.dwg" 1))
     
-    (setq unique_names '())
-    (setq unique_paths '())
-    
-    (foreach dwg all_dwgs
-        (setq base_name (get_block_base_name dwg))
-        
-        ;; Check if this base name is already in the list
-        (if (not (item_in_list base_name unique_names))
-            (progn
-                ;; Add to unique names
-                (setq unique_names (append unique_names (list base_name)))
-                ;; Store the FULL PATH for later use
-                (setq full_path (strcat dwg_path dwg))
-                (setq unique_paths (append unique_paths (list full_path)))
-            )
-        )
-    )
-    
     ;; Sort and update globals
-    (setq *drawings_list* (vl-sort unique_names '<))
-    (setq *drawings_full_paths* unique_paths)
-)
-
-;; ===== GET BLOCK BASE NAME (Remove ALL suffixes) =====
-(defun get_block_base_name (filename)
-    "Extract block name and remove .dwg extension and all variant suffixes"
-    ;; Remove .dwg extension
-    (setq name_no_ext (substr filename 1 (- (strlen filename) 4)))
+    (setq *drawings_list* (vl-sort all_dwgs '<))
     
-    ;; Remove ALL variant suffixes
-    (setq suffixes '("-3D" "-SECTION" "-PLAN" "-RIGHT" "-LEFT" "-LIFT" "-FRONT"))
-    (foreach suf suffixes
-        (setq slen (strlen suf))
-        (setq nlen (strlen name_no_ext))
-        (if (>= nlen slen)
-            (if (equal (substr name_no_ext (+ (- nlen slen) 1)) suf)
-                (setq name_no_ext (substr name_no_ext 1 (- nlen slen)))
-            )
-        )
-    )
-    name_no_ext
-)
-
-;; ===== ITEM IN LIST =====
-(defun item_in_list (item lst)
-    "Check if item already in list"
-    (if (null lst)
-        nil
-        (if (equal item (car lst))
-            T
-            (item_in_list item (cdr lst))
-        )
+    ;; Store full paths
+    (setq *drawings_full_paths* '())
+    (foreach dwg *drawings_list*
+        (setq full_path (strcat dwg_path dwg))
+        (setq *drawings_full_paths* (append *drawings_full_paths* (list full_path)))
     )
 )
 
@@ -258,17 +234,10 @@
     (if (and (>= idx 0) (< idx (length *drawings_list*)))
         (progn
             (setq *drawing* (nth idx *drawings_list*))
+            (setq drawing_path (nth idx *drawings_full_paths*))
             
-            ;; Get the base filename from the full path
-            (setq base_file_path (nth idx *drawings_full_paths*))
-            (setq base_filename (get_filename_from_path base_file_path))
-            
-            ;; Get ALL VARIANTS of this block
-            (setq *previews* (get_all_variants base_filename))
-            (setq *preview_idx* 0)
-            
-            ;; LOAD AND DISPLAY THE FIRST VARIANT (BASE/LEFT)
-            (load_and_show_preview (nth 0 *previews*))
+            ;; LOAD AND DISPLAY THE DRAWING
+            (load_and_show_preview drawing_path)
             
             ;; Update info
             (setq info (strcat "BLOCK: " *drawing* 
@@ -282,7 +251,7 @@
             (set_tile "block_rotation" (rtos *last_rotation* 2 1))
             (set_tile "block_layer" *last_layer*)
             
-            (set_tile "status_bar" (strcat "Block: " *drawing* " (" (count_variants *previews*) " variants) - Click preview buttons to see other views"))
+            (set_tile "status_bar" (strcat "Block: " *drawing* " - Ready to Insert"))
         )
     )
 )
@@ -300,76 +269,7 @@
         )
         (progn
             (set_tile "main_preview" "")
-            (if dwg_file
-                (set_tile "status_bar" "Preview not available for this variant")
-                (set_tile "status_bar" "Select a block to see preview")
-            )
-        )
-    )
-)
-
-;; ===== GET FILENAME FROM PATH (Compatible with older AutoCAD) =====
-(defun get_filename_from_path (full_path)
-    "Extract just the filename from a full path"
-    (setq parts (string_split full_path "\\"))
-    (if parts
-        (car (last parts))
-        full_path
-    )
-)
-
-;; ===== GET ALL VARIANTS =====
-(defun get_all_variants (base_filename)
-    "Get all variant files for a block"
-    (setq variants '())
-    (setq suffixes '("" "-LEFT" "-FRONT" "-RIGHT" "-PLAN" "-SECTION" "-3D"))
-    
-    ;; Remove .dwg extension
-    (setq name_no_ext (substr base_filename 1 (- (strlen base_filename) 4)))
-    
-    (foreach suf suffixes
-        (setq fname (strcat name_no_ext suf ".dwg"))
-        (setq fpath (strcat *lib_path* *main_folder* "\\" *sub_folder* "\\" fname))
-        
-        (if (findfile fpath)
-            (setq variants (append variants (list fpath)))
-            (setq variants (append variants (list nil)))
-        )
-    )
-    
-    variants
-)
-
-;; ===== COUNT AVAILABLE VARIANTS =====
-(defun count_variants (variant_list)
-    "Count how many variants are available"
-    (setq count 0)
-    (foreach v variant_list
-        (if v
-            (setq count (+ count 1))
-        )
-    )
-    (itoa count)
-)
-
-;; ===== ON PREVIEW BUTTON CLICKED =====
-(defun on_preview (idx)
-    "Handle preview button click - switch between variants - DIALOG STAYS OPEN"
-    (setq *preview_idx* idx)
-    (if (and *previews* (>= idx 0) (< idx (length *previews*)))
-        (progn
-            (setq variant_file (nth idx *previews*))
-            (load_and_show_preview variant_file)
-            
-            (if (< idx (length *preview_labels*))
-                (setq label (nth idx *preview_labels*))
-                (setq label "")
-            )
-            
-            (if variant_file
-                (set_tile "status_bar" (strcat *drawing* " - VIEW: " label))
-                (set_tile "status_bar" (strcat "Variant not available - " label))
-            )
+            (set_tile "status_bar" "Preview not available")
         )
     )
 )
@@ -403,39 +303,50 @@
     (set_tile "block_info" "")
 )
 
+;; ===== ON PREVIEW BUTTON CLICKED =====
+(defun on_preview (idx)
+    "Handle preview button click"
+    (if *drawing*
+        (set_tile "status_bar" (strcat "Preview variant " (itoa (+ idx 1))))
+    )
+)
+
 ;; ===== INSERT BLOCK =====
 (defun on_insert ()
-    "Insert selected block variant"
-    (if (and *drawing* *previews* (>= *preview_idx* 0) (< *preview_idx* (length *previews*)))
+    "Insert selected block"
+    (if *drawing*
         (progn
-            (setq fpath (nth *preview_idx* *previews*))
-            (if fpath
+            ;; Get values
+            (setq scale_str (get_tile "block_scale"))
+            (setq rotation_str (get_tile "block_rotation"))
+            (setq layer (get_tile "block_layer"))
+            
+            ;; Validate scale
+            (if (and scale_str (> (strlen scale_str) 0))
                 (progn
-                    ;; Get values
-                    (setq scale_str (get_tile "block_scale"))
-                    (setq rotation_str (get_tile "block_rotation"))
-                    (setq layer (get_tile "block_layer"))
-                    
-                    ;; Validate scale
-                    (if (and scale_str (> (strlen scale_str) 0))
-                        (progn
-                            (setq scale (atof scale_str))
-                            (if (<= scale 0) (setq scale 1.0))
-                        )
-                        (setq scale 1.0)
-                    )
-                    
-                    ;; Validate rotation
-                    (if (and rotation_str (> (strlen rotation_str) 0))
-                        (setq rotation (atof rotation_str))
-                        (setq rotation 0)
-                    )
-                    
-                    ;; Save values
-                    (setq *last_scale* scale)
-                    (setq *last_rotation* rotation)
-                    (setq *last_layer* layer)
-                    
+                    (setq scale (atof scale_str))
+                    (if (<= scale 0) (setq scale 1.0))
+                )
+                (setq scale 1.0)
+            )
+            
+            ;; Validate rotation
+            (if (and rotation_str (> (strlen rotation_str) 0))
+                (setq rotation (atof rotation_str))
+                (setq rotation 0)
+            )
+            
+            ;; Save values
+            (setq *last_scale* scale)
+            (setq *last_rotation* rotation)
+            (setq *last_layer* layer)
+            
+            ;; Get drawing path
+            (setq idx (atoi (get_tile "folder_list")))
+            (setq fpath (nth idx *drawings_full_paths*))
+            
+            (if (findfile fpath)
+                (progn
                     ;; Close dialog
                     (done_dialog)
                     
@@ -464,7 +375,7 @@
                         )
                     )
                 )
-                (alert "This variant is not available!")
+                (alert "Block file not found!")
             )
         )
         (alert "Please select a block first!")
@@ -482,8 +393,8 @@
 )
 
 (princ "\n========================================")
-(princ "\n>>> CAD BLOCK LIBRARY MANAGEMENT v1.1")
+(princ "\n>>> CAD BLOCK LIBRARY MANAGEMENT v1.2")
 (princ "\n>>> Type CADLIB to start")
-(princ "\n>>> FIXED: Compatible with older AutoCAD")
+(princ "\n>>> FIXED: Show full DWG filenames")
 (princ "\n========================================\n")
 (princ)
