@@ -1,6 +1,6 @@
 ;; CAD BLOCK LIBRARY MANAGEMENT SYSTEM
 ;; AutoLISP - SHOW BASE NAMES ONLY, WITH VARIANT PREVIEWS
-;; Version: v1.3 | Lines: 520 | Size: 19 KB | Date: 2026-08-16 | Time: 12:45:00 UTC
+;; Version: v1.4 | Lines: 525 | Size: 19 KB | Date: 2026-08-16 | Time: 13:30:00 UTC
 
 ;; Global Variables
 (setq *lib_path* "D:\\CAD SETUP\\CATALOG\\CADBLOCKLIBRARY\\")
@@ -207,7 +207,7 @@
         (progn
             (setq *sub_folder* (nth idx *sub_folders_list*))
             
-            ;; Get ONLY BASE BLOCK NAMES
+            ;; Get ONLY UNIQUE BASE BLOCK NAMES (NO DUPLICATES)
             (setq *drawings_list* '())
             (setq *drawings_full_paths* '())
             (get_unique_base_names *main_folder* *sub_folder*)
@@ -225,9 +225,9 @@
     )
 )
 
-;; ===== GET UNIQUE BASE NAMES =====
+;; ===== GET UNIQUE BASE NAMES (FIXED - NO DUPLICATES) =====
 (defun get_unique_base_names (main_folder sub_folder)
-    "Extract unique base block names (TABLE_001, TABLE_002, etc)"
+    "Extract ONLY unique base block names - no duplicates"
     (setq dwg_path (strcat *lib_path* main_folder "\\" sub_folder "\\"))
     (setq all_dwgs (vl-directory-files dwg_path "*.dwg" 1))
     
@@ -237,21 +237,29 @@
     (foreach dwg all_dwgs
         (setq base_name (get_base_name dwg))
         
-        ;; Check if this base name is already in the list
+        ;; Check if this base name is ALREADY in the list
         (if (not (item_in_list base_name unique_names))
             (progn
-                ;; Add to unique names with .DWG extension
+                ;; Add ONLY ONCE
+                (setq unique_names (append unique_names (list base_name)))
+                ;; Store display name with .DWG extension
                 (setq display_name (strcat base_name ".DWG"))
-                (setq unique_names (append unique_names (list display_name)))
-                ;; Store base name for variant lookup
-                (setq unique_paths (append unique_paths (list base_name)))
+                (setq unique_paths (append unique_paths (list display_name)))
             )
         )
     )
     
     ;; Sort and update globals
-    (setq *drawings_list* (vl-sort unique_names '<))
-    (setq *drawings_full_paths* unique_paths)
+    (setq sorted_paths (vl-sort unique_paths '<))
+    (setq *drawings_list* sorted_paths)
+    
+    ;; Update full paths to match sorted order
+    (setq *drawings_full_paths* '())
+    (foreach disp_name sorted_paths
+        ;; Remove .DWG to get base name
+        (setq base_name (substr disp_name 1 (- (strlen disp_name) 4)))
+        (setq *drawings_full_paths* (append *drawings_full_paths* (list base_name)))
+    )
 )
 
 ;; ===== ON BLOCK SELECTED - LOAD VARIANTS =====
@@ -483,8 +491,8 @@
 )
 
 (princ "\n========================================")
-(princ "\n>>> CAD BLOCK LIBRARY MANAGEMENT v1.3")
+(princ "\n>>> CAD BLOCK LIBRARY MANAGEMENT v1.4")
 (princ "\n>>> Type CADLIB to start")
-(princ "\n>>> Base Names Only + Variant Previews")
+(princ "\n>>> FIXED: No duplicate base names")
 (princ "\n========================================\n")
 (princ)
