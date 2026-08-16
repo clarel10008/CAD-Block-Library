@@ -1,9 +1,11 @@
 ;; CAD BLOCK LIBRARY MANAGEMENT SYSTEM
 ;; AutoLISP - SHOW BASE NAMES ONLY, WITH VARIANT PREVIEWS
-;; Version: v1.7 | Lines: 545 | Size: 20 KB | Date: 2026-08-16 | Time: 17:20:15 MUT
+;; Version: v1.8 | Lines: 580 | Size: 22 KB | Date: 2026-08-16 | Time: 17:45:30 MUT
 
 ;; ===== GLOBAL VARIABLES =====
 (setq *lib_path* "D:\\CAD SETUP\\CATALOG\\CADBLOCKLIBRARY\\")
+(setq *lib_path_alt* "C:\\CAD\\BLOCKS\\")  ;; Alternative path
+(setq *lib_path_user* nil)                 ;; User-defined path
 (setq *main_folder* nil)
 (setq *sub_folder* nil)
 (setq *drawing* nil)
@@ -24,6 +26,50 @@
 (setq *last_layer* "0")
 (setq *last_rotation* 0)
 (setq *error_log* '())
+(setq *active_lib_path* nil)  ;; The working library path
+
+;; ===== UTILITY: DETECT LIBRARY PATH =====
+(defun detect_lib_path ()
+    "Auto-detect the library path - try multiple locations"
+    (princ "\n[INFO] Detecting library path...")
+    
+    ;; Try primary path
+    (if (findfile *lib_path*)
+        (progn
+            (princ (strcat "\n[SUCCESS] Found primary path: " *lib_path*))
+            (setq *active_lib_path* *lib_path*)
+            T
+        )
+        (progn
+            (princ (strcat "\n[CHECKING] Primary path not found: " *lib_path*))
+            
+            ;; Try alternative path
+            (if (findfile *lib_path_alt*)
+                (progn
+                    (princ (strcat "\n[SUCCESS] Found alternative path: " *lib_path_alt*))
+                    (setq *active_lib_path* *lib_path_alt*)
+                    T
+                )
+                (progn
+                    (princ (strcat "\n[CHECKING] Alternative path not found: " *lib_path_alt*))
+                    
+                    ;; Try user-defined path
+                    (if (and *lib_path_user* (findfile *lib_path_user*))
+                        (progn
+                            (princ (strcat "\n[SUCCESS] Found user-defined path: " *lib_path_user*))
+                            (setq *active_lib_path* *lib_path_user*)
+                            T
+                        )
+                        (progn
+                            (princ "\n[FAILED] No valid library path found!")
+                            nil
+                        )
+                    )
+                )
+            )
+        )
+    )
+)
 
 ;; ===== UTILITY: GET BASE NAME (Remove suffixes and extension) =====
 (defun get_base_name (filename)
@@ -72,6 +118,12 @@
     (princ (strcat "\n[ERROR] " error_msg))
 )
 
+;; ===== UTILITY: ADD INFO TO LOG =====
+(defun log_info (info_msg)
+    "Add info message to log"
+    (princ (strcat "\n[INFO] " info_msg))
+)
+
 ;; ===== UTILITY: SAFE ATOI (String to Integer) =====
 (defun safe_atoi (str default)
     "Convert string to integer safely with default value"
@@ -106,6 +158,11 @@
 (defun c:CADLIB ()
     "Open CAD Block Library - Main Entry Point"
     
+    (princ "\n╔════════════════════════════════════════════════════════╗")
+    (princ "\n║   CAD BLOCK LIBRARY MANAGEMENT SYSTEM v1.8             ║")
+    (princ "\n║   Location: Mauritius (UTC+4 MUT)                      ║")
+    (princ "\n╚════════════════════════════════════════════════════════╝")
+    
     ;; Check if DCL file exists
     (if (not (findfile "CAD_BLOCK_LIBRARY.dcl"))
         (progn
@@ -115,11 +172,15 @@
         )
     )
     
-    ;; Check if library path exists
-    (if (not (findfile *lib_path*))
+    ;; Detect library path
+    (if (not (detect_lib_path))
         (progn
-            (alert (strcat "ERROR: Library path not found!\n\n" *lib_path*))
-            (log_error (strcat "Library path not found: " *lib_path*))
+            (alert (strcat "ERROR: Library path not found!\n\n"
+                          "Tried paths:\n"
+                          "1. " *lib_path* "\n"
+                          "2. " *lib_path_alt* "\n\n"
+                          "Please create one of these folders or update the path in the LISP file."))
+            (log_error "All library paths failed")
             (exit)
         )
     )
@@ -148,7 +209,9 @@
     
     (if (null *main_folders_list*)
         (progn
-            (alert "WARNING: No folders found in library path!")
+            (alert (strcat "WARNING: No folders found in library path!\n\n"
+                          "Path: " *active_lib_path* "\n\n"
+                          "Create sub-folders in this path for your block categories."))
             (log_error "No folders found in library")
         )
     )
@@ -165,7 +228,8 @@
     (set_tile "block_rotation" (rtos *last_rotation* 2 1))
     (set_tile "block_layer" *last_layer*)
     
-    (set_tile "status_bar" "Ready: Select a main folder to begin")
+    ;; Show active library path in status bar
+    (set_tile "status_bar" (strcat "✓ Library: " *active_lib_path* " | Ready to begin"))
     
     ;; Setup all tile actions
     (setup_dialog_actions)
@@ -185,7 +249,7 @@
     (action_tile "sub_list" "(on_sub_list)")
     (action_tile "folder_list" "(on_drawing_list)")
     
-    ;; Preview button actions (6 variants + BASE)
+    ;; Preview button actions
     (action_tile "preview_0" "(on_preview 0)")
     (action_tile "preview_1" "(on_preview 1)")
     (action_tile "preview_2" "(on_preview 2)")
@@ -203,20 +267,26 @@
 ;; ===== GET MAIN FOLDERS =====
 (defun get_main_folders ()
     "Get list of main category folders from library path"
-    (if (not (findfile *lib_path*))
+    (if (not *active_lib_path*)
         (progn
-            (log_error (strcat "Library path not accessible: " *lib_path*))
+            (log_error "Active library path not set")
             '()
         )
-        (progn
-            (setq all_items (vl-directory-files *lib_path* "*" -1))
-            (setq clean '())
-            (foreach item all_items
-                (if (and (not (equal item ".")) (not (equal item "..")))
-                    (setq clean (append clean (list item)))
-                )
+        (if (not (findfile *active_lib_path*))
+            (progn
+                (log_error (strcat "Library path not accessible: " *active_lib_path*))
+                '()
             )
-            (vl-sort clean '<)
+            (progn
+                (setq all_items (vl-directory-files *active_lib_path* "*" -1))
+                (setq clean '())
+                (foreach item all_items
+                    (if (and (not (equal item ".")) (not (equal item "..")))
+                        (setq clean (append clean (list item)))
+                    )
+                )
+                (vl-sort clean '<)
+            )
         )
     )
 )
@@ -253,7 +323,7 @@
     (if (null main_folder)
         '()
         (progn
-            (setq sub_path (strcat *lib_path* main_folder "\\"))
+            (setq sub_path (strcat *active_lib_path* main_folder "\\"))
             (if (not (findfile sub_path))
                 (progn
                     (log_error (strcat "Sub folder path not found: " sub_path))
@@ -310,7 +380,7 @@
             (setq *drawings_full_paths* '())
         )
         (progn
-            (setq dwg_path (strcat *lib_path* main_folder "\\" sub_folder "\\"))
+            (setq dwg_path (strcat *active_lib_path* main_folder "\\" sub_folder "\\"))
             (setq all_dwgs (vl-directory-files dwg_path "*.dwg" 1))
             
             (if (null all_dwgs)
@@ -401,7 +471,7 @@
     (if (null base_name)
         (setq *preview_variants* '())
         (progn
-            (setq dwg_path (strcat *lib_path* *main_folder* "\\" *sub_folder* "\\"))
+            (setq dwg_path (strcat *active_lib_path* *main_folder* "\\" *sub_folder* "\\"))
             (setq *preview_variants* '())
             
             ;; First add base file (no suffix)
@@ -591,13 +661,14 @@
     )
 )
 
-;; ===== VERSION AND STARTUP MESSAGE =====
 (princ "\n╔════════════════════════════════════════════════════════╗")
-(princ "\n║   CAD BLOCK LIBRARY MANAGEMENT SYSTEM v1.7             ║")
+(princ "\n║   CAD BLOCK LIBRARY MANAGEMENT SYSTEM v1.8             ║")
 (princ "\n║   Location: Mauritius (UTC+4 MUT)                      ║")
 (princ "\n║   Type: CADLIB to start                                ║")
 (princ "\n║                                                        ║")
 (princ "\n║   Features:                                            ║")
+(princ "\n║   ✓ Auto-detect library path                           ║")
+(princ "\n║   ✓ Multiple path support                              ║")
 (princ "\n║   ✓ No duplicate base names                            ║")
 (princ "\n║   ✓ Dialog stays open on selection                     ║")
 (princ "\n║   ✓ 6 variant previews                                 ║")
