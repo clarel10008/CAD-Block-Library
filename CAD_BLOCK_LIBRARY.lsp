@@ -1,11 +1,12 @@
+;; Version: v1.9 | Lines: 590 | Size: 23 KB | Date: 2026-08-16 | Time: 18:15:45
 ;; CAD BLOCK LIBRARY MANAGEMENT SYSTEM
 ;; AutoLISP - SHOW BASE NAMES ONLY, WITH VARIANT PREVIEWS
-;; Version: v1.8 | Lines: 580 | Size: 22 KB | Date: 2026-08-16 | Time: 17:45:30 MUT
+;; Location: Mauritius (UTC+4 MUT)
 
 ;; ===== GLOBAL VARIABLES =====
-(setq *lib_path* "D:\\CAD SETUP\\CATALOG\\CADBLOCKLIBRARY\\")
-(setq *lib_path_alt* "C:\\CAD\\BLOCKS\\")  ;; Alternative path
-(setq *lib_path_user* nil)                 ;; User-defined path
+(setq *lib_path* "D:\\CAD SETUP\\CATALOG\\CADBLOCKLIBRARY")
+(setq *lib_path_alt* "C:\\CAD\\BLOCKS")
+(setq *lib_path_user* nil)
 (setq *main_folder* nil)
 (setq *sub_folder* nil)
 (setq *drawing* nil)
@@ -26,7 +27,46 @@
 (setq *last_layer* "0")
 (setq *last_rotation* 0)
 (setq *error_log* '())
-(setq *active_lib_path* nil)  ;; The working library path
+(setq *active_lib_path* nil)
+
+;; ===== UTILITY: NORMALIZE PATH =====
+(defun normalize_path (path)
+    "Normalize path - ensure it ends with backslash"
+    (if (and path (> (strlen path) 0))
+        (progn
+            ;; Remove trailing backslash if exists
+            (if (equal (substr path (strlen path)) "\\")
+                (setq clean_path (substr path 1 (- (strlen path) 1)))
+                (setq clean_path path)
+            )
+            clean_path
+        )
+        nil
+    )
+)
+
+;; ===== UTILITY: PATH EXISTS CHECK =====
+(defun path_exists (path)
+    "Check if path (directory) exists using vl-directory-files"
+    (if (null path)
+        nil
+        (progn
+            (setq normalized (normalize_path path))
+            (if (null normalized)
+                nil
+                (progn
+                    ;; Try to list files in directory - if it works, path exists
+                    (setq result (vl-catch-all-apply 'vl-directory-files 
+                        (list normalized "*" -1)))
+                    (if (vl-catch-all-error-p result)
+                        nil
+                        T
+                    )
+                )
+            )
+        )
+    )
+)
 
 ;; ===== UTILITY: DETECT LIBRARY PATH =====
 (defun detect_lib_path ()
@@ -34,30 +74,30 @@
     (princ "\n[INFO] Detecting library path...")
     
     ;; Try primary path
-    (if (findfile *lib_path*)
+    (if (path_exists *lib_path*)
         (progn
             (princ (strcat "\n[SUCCESS] Found primary path: " *lib_path*))
-            (setq *active_lib_path* *lib_path*)
+            (setq *active_lib_path* (strcat (normalize_path *lib_path*) "\\"))
             T
         )
         (progn
             (princ (strcat "\n[CHECKING] Primary path not found: " *lib_path*))
             
             ;; Try alternative path
-            (if (findfile *lib_path_alt*)
+            (if (path_exists *lib_path_alt*)
                 (progn
                     (princ (strcat "\n[SUCCESS] Found alternative path: " *lib_path_alt*))
-                    (setq *active_lib_path* *lib_path_alt*)
+                    (setq *active_lib_path* (strcat (normalize_path *lib_path_alt*) "\\"))
                     T
                 )
                 (progn
                     (princ (strcat "\n[CHECKING] Alternative path not found: " *lib_path_alt*))
                     
                     ;; Try user-defined path
-                    (if (and *lib_path_user* (findfile *lib_path_user*))
+                    (if (and *lib_path_user* (path_exists *lib_path_user*))
                         (progn
                             (princ (strcat "\n[SUCCESS] Found user-defined path: " *lib_path_user*))
-                            (setq *active_lib_path* *lib_path_user*)
+                            (setq *active_lib_path* (strcat (normalize_path *lib_path_user*) "\\"))
                             T
                         )
                         (progn
@@ -71,7 +111,7 @@
     )
 )
 
-;; ===== UTILITY: GET BASE NAME (Remove suffixes and extension) =====
+;; ===== UTILITY: GET BASE NAME =====
 (defun get_base_name (filename)
     "Extract base name removing all suffixes and .dwg extension"
     (if (and filename (> (strlen filename) 0))
@@ -82,7 +122,7 @@
                 (setq name_no_ext filename)
             )
             
-            ;; Remove ALL variant suffixes - check longest first
+            ;; Remove ALL variant suffixes
             (setq suffixes '("-3D" "-SECTION" "-PLAN" "-RIGHT" "-FRONT" "-LEFT"))
             (foreach suf suffixes
                 (setq slen (strlen suf))
@@ -124,9 +164,9 @@
     (princ (strcat "\n[INFO] " info_msg))
 )
 
-;; ===== UTILITY: SAFE ATOI (String to Integer) =====
+;; ===== UTILITY: SAFE ATOI =====
 (defun safe_atoi (str default)
-    "Convert string to integer safely with default value"
+    "Convert string to integer safely"
     (if (and str (> (strlen str) 0))
         (progn
             (setq result (vl-catch-all-apply 'atoi (list str)))
@@ -139,9 +179,9 @@
     )
 )
 
-;; ===== UTILITY: SAFE ATOF (String to Float) =====
+;; ===== UTILITY: SAFE ATOF =====
 (defun safe_atof (str default)
-    "Convert string to float safely with default value"
+    "Convert string to float safely"
     (if (and str (> (strlen str) 0))
         (progn
             (setq result (vl-catch-all-apply 'atof (list str)))
@@ -159,7 +199,7 @@
     "Open CAD Block Library - Main Entry Point"
     
     (princ "\n╔════════════════════════════════════════════════════════╗")
-    (princ "\n║   CAD BLOCK LIBRARY MANAGEMENT SYSTEM v1.8             ║")
+    (princ "\n║   CAD BLOCK LIBRARY MANAGEMENT SYSTEM v1.9             ║")
     (princ "\n║   Location: Mauritius (UTC+4 MUT)                      ║")
     (princ "\n╚════════════════════════════════════════════════════════╝")
     
@@ -244,12 +284,10 @@
 (defun setup_dialog_actions ()
     "Setup all dialog tile action handlers"
     
-    ;; List actions
     (action_tile "main_list" "(on_main_list)")
     (action_tile "sub_list" "(on_sub_list)")
     (action_tile "folder_list" "(on_drawing_list)")
     
-    ;; Preview button actions
     (action_tile "preview_0" "(on_preview 0)")
     (action_tile "preview_1" "(on_preview 1)")
     (action_tile "preview_2" "(on_preview 2)")
@@ -258,7 +296,6 @@
     (action_tile "preview_5" "(on_preview 5)")
     (action_tile "preview_6" "(on_preview 6)")
     
-    ;; Button actions
     (action_tile "insert_block" "(on_insert)")
     (action_tile "explode_check" "(on_explode)")
     (action_tile "accept" "(done_dialog 0)")
@@ -272,7 +309,7 @@
             (log_error "Active library path not set")
             '()
         )
-        (if (not (findfile *active_lib_path*))
+        (if (not (path_exists *active_lib_path*))
             (progn
                 (log_error (strcat "Library path not accessible: " *active_lib_path*))
                 '()
@@ -300,14 +337,12 @@
             (setq *main_folder* (nth idx *main_folders_list*))
             (setq *sub_folders_list* (get_sub_folders *main_folder*))
             
-            ;; Populate sub list
             (start_list "sub_list")
             (foreach sub *sub_folders_list*
                 (add_list sub)
             )
             (end_list)
             
-            ;; Clear folder list
             (start_list "folder_list")
             (end_list)
             
@@ -323,8 +358,8 @@
     (if (null main_folder)
         '()
         (progn
-            (setq sub_path (strcat *active_lib_path* main_folder "\\"))
-            (if (not (findfile sub_path))
+            (setq sub_path (strcat *active_lib_path* main_folder))
+            (if (not (path_exists sub_path))
                 (progn
                     (log_error (strcat "Sub folder path not found: " sub_path))
                     '()
@@ -352,12 +387,10 @@
         (progn
             (setq *sub_folder* (nth idx *sub_folders_list*))
             
-            ;; Get ONLY UNIQUE BASE BLOCK NAMES (NO DUPLICATES)
             (setq *drawings_list* '())
             (setq *drawings_full_paths* '())
             (get_unique_base_names *main_folder* *sub_folder*)
             
-            ;; Populate folder list with ONLY BASE NAMES
             (start_list "folder_list")
             (foreach dwg *drawings_list*
                 (add_list dwg)
@@ -370,7 +403,7 @@
     )
 )
 
-;; ===== GET UNIQUE BASE NAMES (NO DUPLICATES) =====
+;; ===== GET UNIQUE BASE NAMES =====
 (defun get_unique_base_names (main_folder sub_folder)
     "Extract ONLY unique base block names - no duplicates"
     (if (or (null main_folder) (null sub_folder))
@@ -380,7 +413,7 @@
             (setq *drawings_full_paths* '())
         )
         (progn
-            (setq dwg_path (strcat *active_lib_path* main_folder "\\" sub_folder "\\"))
+            (setq dwg_path (strcat *active_lib_path* main_folder "\\" sub_folder))
             (setq all_dwgs (vl-directory-files dwg_path "*.dwg" 1))
             
             (if (null all_dwgs)
@@ -396,26 +429,20 @@
                     (foreach dwg all_dwgs
                         (setq base_name (get_base_name dwg))
                         
-                        ;; Check if this base name is ALREADY in the list
                         (if (and base_name (not (item_in_list base_name unique_names)))
                             (progn
-                                ;; Add ONLY ONCE
                                 (setq unique_names (append unique_names (list base_name)))
-                                ;; Store display name with .DWG extension
                                 (setq display_name (strcat base_name ".DWG"))
                                 (setq unique_paths (append unique_paths (list display_name)))
                             )
                         )
                     )
                     
-                    ;; Sort and update globals
                     (setq sorted_paths (vl-sort unique_paths '<))
                     (setq *drawings_list* sorted_paths)
                     
-                    ;; Update full paths to match sorted order
                     (setq *drawings_full_paths* '())
                     (foreach disp_name sorted_paths
-                        ;; Remove .DWG to get base name
                         (setq base_name (substr disp_name 1 (- (strlen disp_name) 4)))
                         (setq *drawings_full_paths* (append *drawings_full_paths* (list base_name)))
                     )
@@ -425,7 +452,7 @@
     )
 )
 
-;; ===== ON BLOCK SELECTED - LOAD VARIANTS - DIALOG STAYS OPEN =====
+;; ===== ON BLOCK SELECTED =====
 (defun on_drawing_list ()
     "Handle base block selection - Load all variants - DIALOG STAYS OPEN"
     (setq idx (safe_atoi (get_tile "folder_list") -1))
@@ -434,10 +461,8 @@
             (setq *drawing* (nth idx *drawings_list*))
             (setq *drawing_base_name* (nth idx *drawings_full_paths*))
             
-            ;; Get ALL VARIANTS of this block
             (get_all_variants_for_block *drawing_base_name*)
             
-            ;; Show first variant (base) in main preview
             (setq *preview_idx* 0)
             (if (and *preview_variants* (nth 0 *preview_variants*))
                 (load_and_show_preview (nth 0 *preview_variants*))
@@ -447,7 +472,6 @@
                 )
             )
             
-            ;; Update info
             (setq info (strcat "BLOCK: " *drawing* 
                               "\nLOCATION: " *main_folder* " > " *sub_folder*
                               "\nSTATUS: Ready to Insert ✓"
@@ -455,7 +479,6 @@
                               "\nINSERTIONS: " (itoa *insertion_count*)))
             (set_tile "block_info" info)
             
-            ;; Set last used values
             (set_tile "block_scale" (rtos *last_scale* 2 2))
             (set_tile "block_rotation" (rtos *last_rotation* 2 1))
             (set_tile "block_layer" *last_layer*)
@@ -467,21 +490,19 @@
 
 ;; ===== GET ALL VARIANTS FOR BLOCK =====
 (defun get_all_variants_for_block (base_name)
-    "Get all variant files for a block (base + 6 variants)"
+    "Get all variant files for a block"
     (if (null base_name)
         (setq *preview_variants* '())
         (progn
             (setq dwg_path (strcat *active_lib_path* *main_folder* "\\" *sub_folder* "\\"))
             (setq *preview_variants* '())
             
-            ;; First add base file (no suffix)
             (setq base_file (strcat dwg_path base_name ".dwg"))
             (if (findfile base_file)
                 (setq *preview_variants* (append *preview_variants* (list base_file)))
                 (setq *preview_variants* (append *preview_variants* (list nil)))
             )
             
-            ;; Add each variant
             (foreach suf *variant_suffixes*
                 (setq variant_file (strcat dwg_path base_name suf ".dwg"))
                 (if (findfile variant_file)
@@ -510,16 +531,15 @@
     )
 )
 
-;; ===== ON PREVIEW BUTTON CLICKED - DIALOG STAYS OPEN =====
+;; ===== ON PREVIEW BUTTON CLICKED =====
 (defun on_preview (idx)
-    "Handle preview button click - show variant preview - DIALOG STAYS OPEN"
+    "Handle preview button click - show variant preview"
     (setq *preview_idx* idx)
     (if (and *preview_variants* (>= idx 0) (< idx (length *preview_variants*)))
         (progn
             (setq variant_file (nth idx *preview_variants*))
             (load_and_show_preview variant_file)
             
-            ;; Update status with label
             (if (< idx (length *preview_labels*))
                 (setq label (nth idx *preview_labels*))
                 (setq label "UNKNOWN")
@@ -581,61 +601,49 @@
 
 ;; ===== INSERT BLOCK =====
 (defun on_insert ()
-    "Insert selected block variant - CLOSES DIALOG ON INSERT"
+    "Insert selected block variant"
     (if (and *drawing* *preview_variants* (>= *preview_idx* 0) (< *preview_idx* (length *preview_variants*)))
         (progn
             (setq fpath (nth *preview_idx* *preview_variants*))
             (if fpath
                 (progn
-                    ;; Get values from dialog
                     (setq scale_str (get_tile "block_scale"))
                     (setq rotation_str (get_tile "block_rotation"))
                     (setq layer_str (get_tile "block_layer"))
                     
-                    ;; Validate scale
                     (setq scale (safe_atof scale_str 1.0))
                     (if (<= scale 0) (setq scale 1.0))
                     
-                    ;; Validate rotation
                     (setq rotation (safe_atof rotation_str 0))
                     
-                    ;; Save last used values
                     (setq *last_scale* scale)
                     (setq *last_rotation* rotation)
                     (if (and layer_str (> (strlen layer_str) 0))
                         (setq *last_layer* layer_str)
                     )
                     
-                    ;; Get variant name
                     (if (< *preview_idx* (length *preview_labels*))
                         (setq variant_label (nth *preview_idx* *preview_labels*))
                         (setq variant_label "BASE")
                     )
                     
-                    ;; Close dialog first
                     (done_dialog)
                     
-                    ;; Get insertion point
                     (setq pt (getpoint "\nSelect insertion point: "))
                     (if pt
                         (progn
-                            ;; Insert block with correct syntax
                             (vl-catch-all-apply 'command (list "INSERT" fpath pt scale scale rotation))
                             
-                            ;; Set layer if specified
                             (if (and layer_str (> (strlen layer_str) 0) (not (equal layer_str "0")))
                                 (vl-catch-all-apply 'command (list "LAYER" "S" layer_str))
                             )
                             
-                            ;; Explode if needed
                             (if *explode_flag*
                                 (vl-catch-all-apply 'command (list "EXPLODE" "LAST"))
                             )
                             
-                            ;; Increment counter
                             (setq *insertion_count* (+ *insertion_count* 1))
                             
-                            ;; Confirmation message
                             (alert (strcat "✓ SUCCESS!\n\nBlock: " *drawing* "\nVariant: " variant_label "\nScale: " (rtos scale 2 2) "\nRotation: " (rtos rotation 2 1) "°\n\nTotal Insertions: " (itoa *insertion_count*)))
                         )
                         (progn
@@ -662,11 +670,12 @@
 )
 
 (princ "\n╔════════════════════════════════════════════════════════╗")
-(princ "\n║   CAD BLOCK LIBRARY MANAGEMENT SYSTEM v1.8             ║")
+(princ "\n║   CAD BLOCK LIBRARY MANAGEMENT SYSTEM v1.9             ║")
 (princ "\n║   Location: Mauritius (UTC+4 MUT)                      ║")
 (princ "\n║   Type: CADLIB to start                                ║")
 (princ "\n║                                                        ║")
 (princ "\n║   Features:                                            ║")
+(princ "\n║   ✓ Fixed path detection (vl-directory-files)          ║")
 (princ "\n║   ✓ Auto-detect library path                           ║")
 (princ "\n║   ✓ Multiple path support                              ║")
 (princ "\n║   ✓ No duplicate base names                            ║")
