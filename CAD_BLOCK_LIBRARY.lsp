@@ -1,5 +1,5 @@
 ;; CAD BLOCK LIBRARY MANAGEMENT SYSTEM
-;; AutoLISP - CORRECTED: SHOW ONLY BASE BLOCK NAMES
+;; AutoLISP - FIXED: Compatible with older AutoCAD versions
 
 ;; Global Variables
 (setq *lib_path* "D:\\CAD SETUP\\CATALOG\\CADBLOCKLIBRARY\\")
@@ -20,6 +20,36 @@
 (setq *last_scale* 1.0)
 (setq *last_layer* "0")
 (setq *last_rotation* 0)
+
+;; ===== STRING SPLIT FUNCTION (Compatible with older AutoCAD) =====
+(defun string_split (str delimiter)
+    "Split a string by delimiter - Works with older AutoCAD versions"
+    (setq result '())
+    (setq current "")
+    (setq i 0)
+    (setq len (strlen str))
+    (setq delim_len (strlen delimiter))
+    
+    (while (< i len)
+        (setq char (substr str (+ i 1) delim_len))
+        (if (equal char delimiter)
+            (progn
+                (setq result (append result (list current)))
+                (setq current "")
+                (setq i (+ i delim_len))
+            )
+            (progn
+                (setq current (strcat current (substr str (+ i 1) 1)))
+                (setq i (+ i 1))
+            )
+        )
+    )
+    
+    (if (> (strlen current) 0)
+        (setq result (append result (list current)))
+    )
+    result
+)
 
 ;; ===== MAIN COMMAND =====
 (defun c:CADLIB ()
@@ -221,9 +251,9 @@
     )
 )
 
-;; ===== ON BLOCK SELECTED - DISPLAY PREVIEW IMMEDIATELY =====
+;; ===== ON BLOCK SELECTED - DISPLAY PREVIEW (DIALOG STAYS OPEN) =====
 (defun on_drawing_list ()
-    "Handle block selection - Display preview in BLOCK PREVIEW BEFORE INSERT"
+    "Handle block selection - Display preview in BLOCK PREVIEW BEFORE INSERT - KEEP DIALOG OPEN!"
     (setq idx (atoi (get_tile "folder_list")))
     (if (and (>= idx 0) (< idx (length *drawings_list*)))
         (progn
@@ -270,16 +300,22 @@
         )
         (progn
             (set_tile "main_preview" "")
-            (set_tile "status_bar" "Preview not available for this variant")
+            (if dwg_file
+                (set_tile "status_bar" "Preview not available for this variant")
+                (set_tile "status_bar" "Select a block to see preview")
+            )
         )
     )
 )
 
-;; ===== GET FILENAME FROM PATH =====
+;; ===== GET FILENAME FROM PATH (Compatible with older AutoCAD) =====
 (defun get_filename_from_path (full_path)
     "Extract just the filename from a full path"
-    (setq path_parts (vl-string-split "\\" full_path))
-    (car (last path_parts))
+    (setq parts (string_split full_path "\\"))
+    (if parts
+        (car (last parts))
+        full_path
+    )
 )
 
 ;; ===== GET ALL VARIANTS =====
@@ -295,7 +331,7 @@
         (setq fname (strcat name_no_ext suf ".dwg"))
         (setq fpath (strcat *lib_path* *main_folder* "\\" *sub_folder* "\\" fname))
         
-        (if (vl-file-systime fpath)
+        (if (findfile fpath)
             (setq variants (append variants (list fpath)))
             (setq variants (append variants (list nil)))
         )
@@ -318,7 +354,7 @@
 
 ;; ===== ON PREVIEW BUTTON CLICKED =====
 (defun on_preview (idx)
-    "Handle preview button click - switch between variants"
+    "Handle preview button click - switch between variants - DIALOG STAYS OPEN"
     (setq *preview_idx* idx)
     (if (and *previews* (>= idx 0) (< idx (length *previews*)))
         (progn
@@ -446,7 +482,8 @@
 )
 
 (princ "\n========================================")
-(princ "\n>>> CAD BLOCK LIBRARY MANAGEMENT v1.0")
+(princ "\n>>> CAD BLOCK LIBRARY MANAGEMENT v1.1")
 (princ "\n>>> Type CADLIB to start")
+(princ "\n>>> FIXED: Compatible with older AutoCAD")
 (princ "\n========================================\n")
 (princ)
