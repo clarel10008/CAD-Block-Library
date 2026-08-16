@@ -4,6 +4,7 @@
 
 ;; ===== GLOBAL VARIABLES =====
 (setq *lib_path* "D:\\CAD SETUP\\CATALOG\\CADBLOCKLIBRARY")
+(setq *dcl_path* "D:\\CAD SETUP\\CATALOG\\CADBLOCKLIBRARY\\MANAGER\\DCL\\")
 (setq *lib_path_user* nil)
 (setq *main_folder* nil)
 (setq *sub_folder* nil)
@@ -173,13 +174,20 @@
     (princ "\n║   Location: Mauritius (UTC+4 MUT)                      ║")
     (princ "\n╚════════════════════════════════════════════════════════╝")
     
-    (if (not (findfile "CAD_BLOCK_LIBRARY.dcl"))
+    (setq dcl_full_path (strcat *dcl_path* "CAD_BLOCK_LIBRARY.dcl"))
+    (princ (strcat "\n[INFO] Looking for DCL at: " dcl_full_path))
+    
+    (if (not (findfile dcl_full_path))
         (progn
-            (alert "ERROR: CAD_BLOCK_LIBRARY.dcl not found!\n\nPlace the DCL file in your support folder.")
-            (log_error "DCL file not found")
+            (alert (strcat "ERROR: CAD_BLOCK_LIBRARY.dcl not found!\n\n"
+                          "Expected location:\n" dcl_full_path "\n\n"
+                          "Please place the DCL file in the MANAGER\\DCL\\ folder."))
+            (log_error (strcat "DCL file not found at: " dcl_full_path))
             (exit)
         )
     )
+    
+    (princ "\n[SUCCESS] DCL file found!")
     
     (if (not (detect_lib_path))
         (progn
@@ -191,14 +199,17 @@
         )
     )
     
-    (setq *dcl_id* (load_dialog "CAD_BLOCK_LIBRARY.dcl"))
+    (setq *dcl_id* (load_dialog dcl_full_path))
     (if (not *dcl_id*)
         (progn
-            (alert "ERROR: Cannot load DCL file!")
+            (alert (strcat "ERROR: Cannot load DCL file!\n\n"
+                          "Path: " dcl_full_path))
             (log_error "Failed to load DCL file")
             (exit)
         )
     )
+    
+    (princ "\n[SUCCESS] DCL loaded!")
     
     (if (not (new_dialog "cad_block_library" *dcl_id*))
         (progn
@@ -208,6 +219,8 @@
             (exit)
         )
     )
+    
+    (princ "\n[SUCCESS] Dialog created!")
     
     (setq *main_folders_list* (get_main_folders))
     
@@ -641,5 +654,6 @@
 (princ "\n║   ✓ 6 variant previews                                 ║")
 (princ "\n║   ✓ Better error handling                              ║")
 (princ "\n║   ✓ Improved validation                                ║")
+(princ "\n║   ✓ CORRECT DCL PATH NOW!                              ║")
 (princ "\n╚════════════════════════════════════════════════════════╝\n")
 (princ)
