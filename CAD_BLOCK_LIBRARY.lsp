@@ -1,6 +1,6 @@
 ;; CAD BLOCK LIBRARY MANAGEMENT SYSTEM
 ;; AutoLISP - SHOW BASE NAMES ONLY, WITH VARIANT PREVIEWS
-;; Version: v1.5 | Lines: 528 | Size: 19 KB | Date: 2026-08-16 | Time: 16:15:45 MUT
+;; Version: v1.6 | Lines: 532 | Size: 19 KB | Date: 2026-08-16 | Time: 16:45:30 MUT
 
 ;; Global Variables
 (setq *lib_path* "D:\\CAD SETUP\\CATALOG\\CADBLOCKLIBRARY\\")
@@ -24,43 +24,13 @@
 (setq *last_layer* "0")
 (setq *last_rotation* 0)
 
-;; ===== STRING SPLIT FUNCTION (Compatible with older AutoCAD) =====
-(defun string_split (str delimiter)
-    "Split a string by delimiter - Works with older AutoCAD versions"
-    (setq result '())
-    (setq current "")
-    (setq i 0)
-    (setq len (strlen str))
-    (setq delim_len (strlen delimiter))
-    
-    (while (< i len)
-        (setq char (substr str (+ i 1) delim_len))
-        (if (equal char delimiter)
-            (progn
-                (setq result (append result (list current)))
-                (setq current "")
-                (setq i (+ i delim_len))
-            )
-            (progn
-                (setq current (strcat current (substr str (+ i 1) 1)))
-                (setq i (+ i 1))
-            )
-        )
-    )
-    
-    (if (> (strlen current) 0)
-        (setq result (append result (list current)))
-    )
-    result
-)
-
 ;; ===== GET BASE NAME (Remove suffixes and extension) =====
 (defun get_base_name (filename)
     "Extract base name removing all suffixes and .dwg extension"
     ;; Remove .dwg extension
     (setq name_no_ext (substr filename 1 (- (strlen filename) 4)))
     
-    ;; Remove ALL variant suffixes
+    ;; Remove ALL variant suffixes - check longest first
     (setq suffixes '("-3D" "-SECTION" "-PLAN" "-RIGHT" "-FRONT" "-LEFT"))
     (foreach suf suffixes
         (setq slen (strlen suf))
@@ -129,13 +99,14 @@
     (action_tile "sub_list" "(on_sub_list)")
     (action_tile "folder_list" "(on_drawing_list)")
     
-    ;; 6 Preview buttons for variants
+    ;; 6 Preview buttons for variants (BASE, LEFT, FRONT, RIGHT, PLAN, SECTION, 3D)
     (action_tile "preview_0" "(on_preview 0)")
     (action_tile "preview_1" "(on_preview 1)")
     (action_tile "preview_2" "(on_preview 2)")
     (action_tile "preview_3" "(on_preview 3)")
     (action_tile "preview_4" "(on_preview 4)")
     (action_tile "preview_5" "(on_preview 5)")
+    (action_tile "preview_6" "(on_preview 6)")
     
     (action_tile "insert_block" "(on_insert)")
     (action_tile "explode_check" "(on_explode)")
@@ -161,7 +132,7 @@
 
 ;; ===== ON MAIN LIST SELECTED =====
 (defun on_main_list ()
-    "Handle main folder selection"
+    "Handle main folder selection - DIALOG STAYS OPEN"
     (setq idx (atoi (get_tile "main_list")))
     (if (and (>= idx 0) (< idx (length *main_folders_list*)))
         (progn
@@ -201,7 +172,7 @@
 
 ;; ===== ON SUB LIST SELECTED =====
 (defun on_sub_list ()
-    "Handle sub-category selection"
+    "Handle sub-category selection - DIALOG STAYS OPEN"
     (setq idx (atoi (get_tile "sub_list")))
     (if (and (>= idx 0) (< idx (length *sub_folders_list*)))
         (progn
@@ -225,7 +196,7 @@
     )
 )
 
-;; ===== GET UNIQUE BASE NAMES (FIXED - NO DUPLICATES) =====
+;; ===== GET UNIQUE BASE NAMES (NO DUPLICATES) =====
 (defun get_unique_base_names (main_folder sub_folder)
     "Extract ONLY unique base block names - no duplicates"
     (setq dwg_path (strcat *lib_path* main_folder "\\" sub_folder "\\"))
@@ -346,14 +317,14 @@
             (setq variant_file (nth idx *preview_variants*))
             (load_and_show_preview variant_file)
             
-            ;; Update status
+            ;; Update status with label
             (if (< idx (length *preview_labels*))
                 (setq label (nth idx *preview_labels*))
-                (setq label "")
+                (setq label "UNKNOWN")
             )
             
             (if variant_file
-                (set_tile "status_bar" (strcat *drawing* " - VIEW: " label))
+                (set_tile "status_bar" (strcat *drawing* " - VIEW: " label " ✓"))
                 (set_tile "status_bar" (strcat "Variant not available - " label))
             )
         )
@@ -408,16 +379,16 @@
 
 ;; ===== INSERT BLOCK =====
 (defun on_insert ()
-    "Insert selected block variant - CLOSES DIALOG ON INSERT"
+    "Insert selected block variant"
     (if (and *drawing* *preview_variants* (>= *preview_idx* 0) (< *preview_idx* (length *preview_variants*)))
         (progn
             (setq fpath (nth *preview_idx* *preview_variants*))
             (if fpath
                 (progn
-                    ;; Get values
+                    ;; Get values from dialog
                     (setq scale_str (get_tile "block_scale"))
                     (setq rotation_str (get_tile "block_rotation"))
-                    (setq layer (get_tile "block_layer"))
+                    (setq layer_str (get_tile "block_layer"))
                     
                     ;; Validate scale
                     (if (and scale_str (> (strlen scale_str) 0))
@@ -434,10 +405,12 @@
                         (setq rotation 0)
                     )
                     
-                    ;; Save values
+                    ;; Save last used values
                     (setq *last_scale* scale)
                     (setq *last_rotation* rotation)
-                    (setq *last_layer* layer)
+                    (if (and layer_str (> (strlen layer_str) 0))
+                        (setq *last_layer* layer_str)
+                    )
                     
                     ;; Get variant name
                     (if (< *preview_idx* (length *preview_labels*))
@@ -445,19 +418,19 @@
                         (setq variant_label "BASE")
                     )
                     
-                    ;; Close dialog BEFORE inserting
+                    ;; Close dialog first
                     (done_dialog)
                     
                     ;; Get insertion point
                     (setq pt (getpoint "\nSelect insertion point: "))
                     (if pt
                         (progn
-                            ;; Insert block
-                            (command "-INSERT" fpath pt scale scale rotation)
+                            ;; Insert block with correct syntax
+                            (command "INSERT" fpath pt scale scale rotation)
                             
-                            ;; Set layer
-                            (if (and layer (not (equal layer "0")))
-                                (command "LAYER" "S" layer)
+                            ;; Set layer if specified
+                            (if (and layer_str (> (strlen layer_str) 0) (not (equal layer_str "0")))
+                                (command "LAYER" "S" layer_str)
                             )
                             
                             ;; Explode if needed
@@ -468,31 +441,31 @@
                             ;; Increment counter
                             (setq *insertion_count* (+ *insertion_count* 1))
                             
-                            ;; Confirmation
-                            (alert (strcat "Block '" *drawing* "' (" variant_label ") inserted!\n\nTotal: " (itoa *insertion_count*)))
+                            ;; Confirmation message
+                            (alert (strcat "✓ Block '" *drawing* "' (" variant_label ") inserted!\n\nTotal insertions: " (itoa *insertion_count*)))
                         )
                     )
                 )
-                (alert "This variant is not available!")
+                (alert "✗ This variant is not available!")
             )
         )
-        (alert "Please select a block and a variant first!")
+        (alert "✗ Please select a block and preview variant first!")
     )
 )
 
 ;; ===== TOGGLE EXPLODE =====
 (defun on_explode ()
-    "Toggle explode"
+    "Toggle explode checkbox"
     (setq *explode_flag* (not *explode_flag*))
     (if *explode_flag*
-        (set_tile "status_bar" "EXPLODE: ON - Blocks will be exploded after insertion")
-        (set_tile "status_bar" "EXPLODE: OFF")
+        (set_tile "status_bar" "EXPLODE: ✓ ON - Blocks will be exploded after insertion")
+        (set_tile "status_bar" "EXPLODE: OFF - Blocks will be inserted normally")
     )
 )
 
 (princ "\n========================================")
-(princ "\n>>> CAD BLOCK LIBRARY MANAGEMENT v1.5")
+(princ "\n>>> CAD BLOCK LIBRARY MANAGEMENT v1.6")
 (princ "\n>>> Type CADLIB to start")
-(princ "\n>>> FIXED: Dialog stays open on block select")
+(princ "\n>>> FIXED: Dialog stays open, better error handling")
 (princ "\n========================================\n")
 (princ)
