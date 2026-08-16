@@ -1,11 +1,10 @@
-;; Version: v1.9 | Lines: 590 | Size: 23 KB | Date: 2026-08-16 | Time: 18:15:45
+;; Version: v1.10 | Lines: 575 | Size: 22 KB | Date: 2026-08-16 | Time: 18:45:30
 ;; CAD BLOCK LIBRARY MANAGEMENT SYSTEM
 ;; AutoLISP - SHOW BASE NAMES ONLY, WITH VARIANT PREVIEWS
 ;; Location: Mauritius (UTC+4 MUT)
 
 ;; ===== GLOBAL VARIABLES =====
 (setq *lib_path* "D:\\CAD SETUP\\CATALOG\\CADBLOCKLIBRARY")
-(setq *lib_path_alt* "C:\\CAD\\BLOCKS")
 (setq *lib_path_user* nil)
 (setq *main_folder* nil)
 (setq *sub_folder* nil)
@@ -34,7 +33,6 @@
     "Normalize path - ensure it ends with backslash"
     (if (and path (> (strlen path) 0))
         (progn
-            ;; Remove trailing backslash if exists
             (if (equal (substr path (strlen path)) "\\")
                 (setq clean_path (substr path 1 (- (strlen path) 1)))
                 (setq clean_path path)
@@ -55,7 +53,6 @@
             (if (null normalized)
                 nil
                 (progn
-                    ;; Try to list files in directory - if it works, path exists
                     (setq result (vl-catch-all-apply 'vl-directory-files 
                         (list normalized "*" -1)))
                     (if (vl-catch-all-error-p result)
@@ -70,43 +67,19 @@
 
 ;; ===== UTILITY: DETECT LIBRARY PATH =====
 (defun detect_lib_path ()
-    "Auto-detect the library path - try multiple locations"
+    "Auto-detect the library path"
     (princ "\n[INFO] Detecting library path...")
     
-    ;; Try primary path
     (if (path_exists *lib_path*)
         (progn
-            (princ (strcat "\n[SUCCESS] Found primary path: " *lib_path*))
+            (princ (strcat "\n[SUCCESS] Found library path: " *lib_path*))
             (setq *active_lib_path* (strcat (normalize_path *lib_path*) "\\"))
             T
         )
         (progn
-            (princ (strcat "\n[CHECKING] Primary path not found: " *lib_path*))
-            
-            ;; Try alternative path
-            (if (path_exists *lib_path_alt*)
-                (progn
-                    (princ (strcat "\n[SUCCESS] Found alternative path: " *lib_path_alt*))
-                    (setq *active_lib_path* (strcat (normalize_path *lib_path_alt*) "\\"))
-                    T
-                )
-                (progn
-                    (princ (strcat "\n[CHECKING] Alternative path not found: " *lib_path_alt*))
-                    
-                    ;; Try user-defined path
-                    (if (and *lib_path_user* (path_exists *lib_path_user*))
-                        (progn
-                            (princ (strcat "\n[SUCCESS] Found user-defined path: " *lib_path_user*))
-                            (setq *active_lib_path* (strcat (normalize_path *lib_path_user*) "\\"))
-                            T
-                        )
-                        (progn
-                            (princ "\n[FAILED] No valid library path found!")
-                            nil
-                        )
-                    )
-                )
-            )
+            (princ (strcat "\n[CHECKING] Library path not found: " *lib_path*))
+            (princ "\n[FAILED] No valid library path found!")
+            nil
         )
     )
 )
@@ -116,13 +89,11 @@
     "Extract base name removing all suffixes and .dwg extension"
     (if (and filename (> (strlen filename) 0))
         (progn
-            ;; Remove .dwg extension
             (if (>= (strlen filename) 4)
                 (setq name_no_ext (substr filename 1 (- (strlen filename) 4)))
                 (setq name_no_ext filename)
             )
             
-            ;; Remove ALL variant suffixes
             (setq suffixes '("-3D" "-SECTION" "-PLAN" "-RIGHT" "-FRONT" "-LEFT"))
             (foreach suf suffixes
                 (setq slen (strlen suf))
@@ -199,11 +170,10 @@
     "Open CAD Block Library - Main Entry Point"
     
     (princ "\n╔════════════════════════════════════════════════════════╗")
-    (princ "\n║   CAD BLOCK LIBRARY MANAGEMENT SYSTEM v1.9             ║")
+    (princ "\n║   CAD BLOCK LIBRARY MANAGEMENT SYSTEM v1.10            ║")
     (princ "\n║   Location: Mauritius (UTC+4 MUT)                      ║")
     (princ "\n╚════════════════════════════════════════════════════════╝")
     
-    ;; Check if DCL file exists
     (if (not (findfile "CAD_BLOCK_LIBRARY.dcl"))
         (progn
             (alert "ERROR: CAD_BLOCK_LIBRARY.dcl not found!\n\nPlace the DCL file in your support folder.")
@@ -212,20 +182,16 @@
         )
     )
     
-    ;; Detect library path
     (if (not (detect_lib_path))
         (progn
             (alert (strcat "ERROR: Library path not found!\n\n"
-                          "Tried paths:\n"
-                          "1. " *lib_path* "\n"
-                          "2. " *lib_path_alt* "\n\n"
-                          "Please create one of these folders or update the path in the LISP file."))
-            (log_error "All library paths failed")
+                          "Path: " *lib_path* "\n\n"
+                          "Please create this folder or update the path in the LISP file."))
+            (log_error "Library path not found")
             (exit)
         )
     )
     
-    ;; Load and open dialog
     (setq *dcl_id* (load_dialog "CAD_BLOCK_LIBRARY.dcl"))
     (if (not *dcl_id*)
         (progn
@@ -244,7 +210,6 @@
         )
     )
     
-    ;; Get and display main folders
     (setq *main_folders_list* (get_main_folders))
     
     (if (null *main_folders_list*)
@@ -256,25 +221,20 @@
         )
     )
     
-    ;; Populate main list
     (start_list "main_list")
     (foreach folder *main_folders_list*
         (add_list folder)
     )
     (end_list)
     
-    ;; Set last used values
     (set_tile "block_scale" (rtos *last_scale* 2 2))
     (set_tile "block_rotation" (rtos *last_rotation* 2 1))
     (set_tile "block_layer" *last_layer*)
     
-    ;; Show active library path in status bar
     (set_tile "status_bar" (strcat "✓ Library: " *active_lib_path* " | Ready to begin"))
     
-    ;; Setup all tile actions
     (setup_dialog_actions)
     
-    ;; Start dialog
     (start_dialog)
     (unload_dialog *dcl_id*)
     (princ)
@@ -670,14 +630,13 @@
 )
 
 (princ "\n╔════════════════════════════════════════════════════════╗")
-(princ "\n║   CAD BLOCK LIBRARY MANAGEMENT SYSTEM v1.9             ║")
+(princ "\n║   CAD BLOCK LIBRARY MANAGEMENT SYSTEM v1.10            ║")
 (princ "\n║   Location: Mauritius (UTC+4 MUT)                      ║")
 (princ "\n║   Type: CADLIB to start                                ║")
 (princ "\n║                                                        ║")
 (princ "\n║   Features:                                            ║")
 (princ "\n║   ✓ Fixed path detection (vl-directory-files)          ║")
-(princ "\n║   ✓ Auto-detect library path                           ║")
-(princ "\n║   ✓ Multiple path support                              ║")
+(princ "\n║   ✓ Single primary path only                           ║")
 (princ "\n║   ✓ No duplicate base names                            ║")
 (princ "\n║   ✓ Dialog stays open on selection                     ║")
 (princ "\n║   ✓ 6 variant previews                                 ║")
